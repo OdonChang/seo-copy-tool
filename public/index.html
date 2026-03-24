@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>文案工具 Pro — SEO 分析 & 文案生成</title>
+<style>
+:root {
+  --bg:#f7f5f2;--surface:#fff;--surface2:#f0ede8;--border:#e2ddd7;--border2:#ccc8c0;
+  --text:#1a1814;--text2:#6b6560;--text3:#9c9690;
+  --accent:#2d5a3d;--accent-l:#e8f0ea;
+  --red:#c0392b;--red-l:#fdecea;
+  --blue:#1a4a7a;--blue-l:#e8f0fa;
+  --gold:#8b6914;--gold-l:#fdf8e8;
+  --r:10px;--rs:6px;
+  --font:'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh}
+.app{display:flex;flex-direction:column;min-height:100vh}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.logo{font-size:15px;font-weight:800;color:var(--accent);display:flex;align-items:center;gap:8px}
+.logo-mark{width:24px;height:24px;border-radius:6px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:800}
+.key-wrap{display:flex;align-items:center;gap:8px}
+.key-wrap label{font-size:12px;color:var(--text2);white-space:nowrap}
+.key-inp{padding:6px 10px;border:1px solid var(--border);border-radius:var(--rs);font-size:12px;font-family:monospace;width:230px;background:var(--bg);color:var(--text);transition:border .15s}
+.key-inp:focus{outline:none;border-color:var(--accent)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--border2);flex-shrink:0;transition:background .3s}
+.dot.ok{background:#27ae60}
+.body{display:flex;flex:1}
+.sidebar{width:196px;flex-shrink:0;border-right:1px solid var(--border);background:var(--surface);padding:14px 10px;display:flex;flex-direction:column;gap:2px;position:sticky;top:56px;height:calc(100vh - 56px);overflow-y:auto}
+.ni{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--rs);cursor:pointer;font-size:13px;color:var(--text2);font-weight:400;transition:all .15s;border:none;background:none;width:100%;text-align:left}
+.ni:hover{background:var(--surface2);color:var(--text)}
+.ni.on{background:var(--accent-l);color:var(--accent);font-weight:700}
+.ni-icon{font-size:14px;width:18px;text-align:center}
+.nlabel{font-size:10px;color:var(--text3);padding:10px 10px 3px;font-weight:700;letter-spacing:.07em;text-transform:uppercase}
+.ndiv{height:1px;background:var(--border);margin:6px 0}
+.content{flex:1;padding:26px 30px;max-width:880px}
+.page{display:none}.page.on{display:block}
+.ph{margin-bottom:22px}
+.ph h1{font-size:21px;font-weight:800;color:var(--text);margin-bottom:4px}
+.ph p{font-size:13px;color:var(--text2);line-height:1.6}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 22px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.ct{font-size:10px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.09em;margin-bottom:12px}
+.fg{margin-bottom:12px}
+.fg label{font-size:12px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px}
+input[type=text],input[type=url],input[type=password],textarea,select{width:100%;padding:8px 11px;border:1px solid var(--border);border-radius:var(--rs);background:var(--bg);color:var(--text);font-size:13px;font-family:var(--font);transition:border .15s}
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent);background:var(--surface)}
+textarea{resize:vertical;min-height:88px;line-height:1.65}
+.r2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--rs);border:1px solid var(--border2);background:var(--surface);cursor:pointer;font-size:13px;font-weight:700;color:var(--text);font-family:var(--font);transition:all .15s}
+.btn:hover{background:var(--surface2)}
+.btn.pri{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn.pri:hover{background:#22472f}
+.btn:disabled,.btn.pri:disabled{opacity:.5;cursor:not-allowed}
+.brow{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.sgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.so{border:1px solid var(--border);border-radius:var(--rs);padding:9px 11px;cursor:pointer;transition:all .15s}
+.so:hover{border-color:var(--border2);background:var(--surface2)}
+.so.sel{border:2px solid var(--accent);background:var(--accent-l)}
+.so .sn{font-size:13px;font-weight:700;color:var(--text)}
+.so .sd{font-size:11px;color:var(--text2);margin-top:1px}
+.plats{display:flex;gap:8px;flex-wrap:wrap}
+.pi{display:flex;align-items:center;gap:5px;padding:7px 11px;border:1px solid var(--border);border-radius:var(--rs);cursor:pointer;font-size:13px;font-weight:600;transition:all .15s}
+.pi:has(input:checked){border-color:var(--accent);background:var(--accent-l);color:var(--accent)}
+.pi input{accent-color:var(--accent)}
+.out-block{background:var(--bg);border:1px solid var(--border);border-radius:var(--rs);padding:14px;margin-top:10px}
+.out-text{font-size:13px;line-height:1.85;white-space:pre-wrap;word-break:break-word;color:var(--text)}
+.out-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.out-label{font-size:10px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.07em}
+.cbtn{font-size:11px;padding:3px 9px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);cursor:pointer;color:var(--text2);font-family:var(--font);transition:all .15s}
+.cbtn:hover{background:var(--accent-l);color:var(--accent);border-color:var(--accent)}
+.loading{display:none;align-items:center;gap:10px;padding:14px;color:var(--text2);font-size:13px}
+.loading.show{display:flex}
+.spin{width:15px;height:15px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.score-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sc{background:var(--bg);border-radius:var(--rs);padding:13px}
+.sc-val{font-size:28px;font-weight:800}
+.sc-name{font-size:11px;color:var(--text2);margin-top:1px}
+.sc-bar{height:3px;border-radius:2px;background:var(--border);margin-top:8px;overflow:hidden}
+.sc-fill{height:100%;border-radius:2px}
+.tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+.tag{padding:3px 9px;border-radius:20px;font-size:12px;font-weight:700}
+.tg{background:var(--accent-l);color:var(--accent)}
+.tr{background:var(--red-l);color:var(--red)}
+.tb{background:var(--blue-l);color:var(--blue)}
+.tgold{background:var(--gold-l);color:var(--gold)}
+.ptabs{display:flex;gap:5px;margin-bottom:14px;flex-wrap:wrap}
+.ptab{padding:5px 13px;border:1px solid var(--border);border-radius:var(--rs);font-size:12px;font-weight:700;cursor:pointer;background:var(--surface);color:var(--text2);font-family:var(--font);transition:all .15s}
+.ptab:hover{background:var(--surface2)}
+.ptab.on{background:var(--text);color:#fff;border-color:var(--text)}
+.pframe{border:1px solid var(--border);border-radius:var(--r);overflow:hidden;max-width:460px}
+.ig-hd{display:flex;align-items:center;gap:9px;padding:11px 13px;background:#fff;border-bottom:1px solid #efefef}
+.ig-av{width:30px;height:30px;border-radius:50%;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366)}
+.ig-nm{font-size:12px;font-weight:700;color:#000;font-family:-apple-system,sans-serif}
+.ig-img{width:100%;height:190px;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;font-size:12px;color:rgba(255,255,255,.6)}
+.ig-body{padding:11px 13px;background:#fff;font-size:13px;color:#262626;line-height:1.65;font-family:-apple-system,sans-serif;white-space:pre-wrap;word-break:break-word}
+.fb-hd{display:flex;align-items:center;gap:9px;padding:11px 13px;background:#fff}
+.fb-av{width:36px;height:36px;border-radius:50%;background:#1877f2;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:13px;flex-shrink:0}
+.fb-nm{font-size:13px;font-weight:700;color:#050505;font-family:-apple-system,sans-serif}
+.fb-tm{font-size:11px;color:#65676b;font-family:-apple-system,sans-serif}
+.fb-body{padding:0 13px 12px;background:#fff;font-size:14px;color:#1c1e21;line-height:1.65;font-family:-apple-system,sans-serif;white-space:pre-wrap;word-break:break-word}
+.fb-img{width:100%;height:180px;background:linear-gradient(135deg,#1877f2,#42b883);display:flex;align-items:center;justify-content:center;font-size:12px;color:rgba(255,255,255,.6)}
+.line-bg{background:#87CEEB;padding:18px 14px;min-height:150px}
+.line-lbl{font-size:11px;color:rgba(0,0,0,.45);text-align:center;margin-bottom:11px;font-family:-apple-system,sans-serif}
+.line-bub{background:#06c755;color:#fff;padding:10px 13px;border-radius:18px 18px 18px 4px;display:inline-block;font-size:13px;line-height:1.65;max-width:84%;font-family:-apple-system,sans-serif;white-space:pre-wrap;word-break:break-word}
+.web-pv{background:#fff;padding:26px 22px;font-family:Georgia,serif}
+.web-h1{font-size:20px;font-weight:700;color:#111;margin-bottom:12px;line-height:1.35}
+.web-body{font-size:14px;color:#444;line-height:1.9;white-space:pre-wrap;word-break:break-word}
+.info{background:var(--gold-l);border:1px solid #e8d89a;border-radius:var(--rs);padding:11px 13px;font-size:13px;color:var(--gold);line-height:1.65;margin-bottom:14px}
+.info.green{background:var(--accent-l);border-color:#a8ccb2;color:var(--accent)}
+.info.red{background:var(--red-l);border-color:#f0b8b0;color:var(--red)}
+.nokey{background:var(--red-l);border:1px solid #f0b8b0;border-radius:var(--rs);padding:11px 13px;font-size:13px;color:var(--red);margin-bottom:14px;display:none}
+.nokey.show{display:block}
+.trend-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)}
+.t-rank{font-size:12px;color:var(--text3);width:20px;font-weight:800}
+.t-kw{font-size:14px;font-weight:700;flex:1}
+.t-vol{font-size:12px;color:var(--text2)}
+.t-arr{font-size:11px;padding:2px 7px;border-radius:10px;font-weight:700}
+.up{background:var(--accent-l);color:var(--accent)}
+.dn{background:var(--red-l);color:var(--red)}
+.char-c{font-size:11px;color:var(--text3);text-align:right;margin-top:3px}
+a{color:var(--accent)}
+@media(max-width:768px){.sidebar{display:none}.content{padding:16px 14px}.r2{grid-template-columns:1fr}.sgrid{grid-template-columns:1fr 1fr}.key-wrap{display:none}}
+</style>
+</head>
+<body>
+<div class="app">
+
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-mark">✦</div>
+    文案工具 Pro
+  </div>
+  <div class="key-wrap">
+    <label>Anthropic API Key</label>
+    <input class="key-inp" type="password" id="api-key" placeholder="sk-ant-..." oninput="checkKey()">
+    <div class="dot" id="dot"></div>
+  </div>
+</div>
+
+<div class="body">
+  <div class="sidebar">
+    <div class="nlabel">分析工具</div>
+    <button class="ni on" onclick="nav('seo',this)"><span class="ni-icon">🔍</span>SEO 分析</button>
+    <button class="ni" onclick="nav('trend',this)"><span class="ni-icon">📈</span>熱門關鍵字</button>
+    <div class="ndiv"></div>
+    <div class="nlabel">文案工具</div>
+    <button class="ni" onclick="nav('gen',this)"><span class="ni-icon">✍️</span>文案生成</button>
+    <button class="ni" onclick="nav('batch',this)"><span class="ni-icon">📋</span>批量生成</button>
+    <div class="ndiv"></div>
+    <div class="nlabel">預覽</div>
+    <button class="ni" onclick="nav('prev',this)"><span class="ni-icon">👁</span>平台預覽</button>
+    <div class="ndiv"></div>
+    <div class="nlabel">設定</div>
+    <button class="ni" onclick="nav('settings',this)"><span class="ni-icon">⚙️</span>設定</button>
+  </div>
+
+  <div class="content">
+
+    <!-- SEO -->
+    <div id="p-seo" class="page on">
+      <div class="ph"><h1>🔍 網站 SEO 分析</h1><p>輸入官方網站網址，AI 將分析 SEO 現況並提供強化建議</p></div>
+      <div class="nokey" id="nk-seo">⚠️ 請先在右上角輸入 Anthropic API Key，才能使用 AI 功能。</div>
+      <div class="card">
+        <div class="ct">網站資訊</div>
+        <div class="r2">
+          <div class="fg"><label>官方網站網址</label><input type="url" id="seo-url" placeholder="https://yourwebsite.com"></div>
+          <div class="fg"><label>品牌 / 產業類型</label><input type="text" id="seo-brand" placeholder="例：藥膳補湯、美妝保養..."></div>
+        </div>
+        <div class="fg"><label>補充說明（選填）</label><input type="text" id="seo-note" placeholder="主打族群、核心差異點..."></div>
+        <div class="brow"><button class="btn pri" id="btn-seo" onclick="runSEO()">開始 SEO 分析 →</button></div>
+      </div>
+      <div class="loading" id="ld-seo"><div class="spin"></div>AI 正在分析網站 SEO 結構，請稍候...</div>
+      <div id="seo-out"></div>
+    </div>
+
+    <!-- 熱門關鍵字 -->
+    <div id="p-trend" class="page">
+      <div class="ph"><h1>📈 熱門關鍵字追蹤</h1><p>即時分析與品牌相關的搜尋趨勢，掌握競品缺口</p></div>
+      <div class="nokey" id="nk-trend">⚠️ 請先在右上角輸入 Anthropic API Key。</div>
+      <div class="card">
+        <div class="ct">追蹤設定</div>
+        <div class="r2">
+          <div class="fg"><label>品牌 / 產業類別</label><input type="text" id="t-brand" placeholder="例：餐飲、美妝、健身..."></div>
+          <div class="fg"><label>目標市場</label><select id="t-market"><option>台灣</option><option>全球中文市場</option><option>東南亞</option><option>日本</option></select></div>
+        </div>
+        <div class="fg"><label>競品品牌（選填，逗號分隔）</label><input type="text" id="t-comp" placeholder="例：品牌A、品牌B..."></div>
+        <div class="brow"><button class="btn pri" id="btn-trend" onclick="runTrend()">抓取熱門關鍵字 →</button></div>
+      </div>
+      <div class="loading" id="ld-trend"><div class="spin"></div>AI 正在分析搜尋趨勢...</div>
+      <div id="trend-out"></div>
+    </div>
+
+    <!-- 文案生成 -->
+    <div id="p-gen" class="page">
+      <div class="ph"><h1>✍️ 文案生成</h1><p>輸入主題，AI 一鍵產生多平台優化文案</p></div>
+      <div class="nokey" id="nk-gen">⚠️ 請先在右上角輸入 Anthropic API Key。</div>
+      <div class="card">
+        <div class="ct">文案主題</div>
+        <div class="fg"><label>標題 / 主題</label><input type="text" id="g-title" placeholder="例：夏季新品上市、週年慶特賣..."></div>
+        <div class="fg"><label>補充說明（產品特色、活動細節、目標受眾）</label><textarea id="g-brief" placeholder="例：主打 30-45 歲女性，強調天然成分，限時 72 小時優惠..."></textarea></div>
+      </div>
+      <div class="card">
+        <div class="ct">文案風格</div>
+        <div class="sgrid">
+          <div class="so sel" data-s="專業權威" onclick="selS(this)"><div class="sn">專業權威</div><div class="sd">建立品牌信任感</div></div>
+          <div class="so" data-s="溫暖親切" onclick="selS(this)"><div class="sn">溫暖親切</div><div class="sd">拉近顧客距離</div></div>
+          <div class="so" data-s="活潑年輕" onclick="selS(this)"><div class="sn">活潑年輕</div><div class="sd">吸引 Z 世代</div></div>
+          <div class="so" data-s="精緻高端" onclick="selS(this)"><div class="sn">精緻高端</div><div class="sd">彰顯品牌質感</div></div>
+          <div class="so" data-s="故事敘述" onclick="selS(this)"><div class="sn">故事敘述</div><div class="sd">引發情感共鳴</div></div>
+          <div class="so" data-s="限時促銷" onclick="selS(this)"><div class="sn">限時促銷</div><div class="sd">製造緊迫感</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ct">目標平台</div>
+        <div class="plats">
+          <label class="pi"><input type="checkbox" id="p-ig" checked> Instagram</label>
+          <label class="pi"><input type="checkbox" id="p-fb" checked> Facebook</label>
+          <label class="pi"><input type="checkbox" id="p-line"> LINE</label>
+          <label class="pi"><input type="checkbox" id="p-web"> 官網</label>
+        </div>
+        <div class="brow">
+          <button class="btn pri" id="btn-gen" onclick="runGen()">生成文案 →</button>
+          <button class="btn" id="btn-ab" onclick="runAB()">A/B 測試版本</button>
+        </div>
+      </div>
+      <div class="loading" id="ld-gen"><div class="spin"></div>AI 正在撰寫文案，請稍候...</div>
+      <div id="gen-out"></div>
+    </div>
+
+    <!-- 批量生成 -->
+    <div id="p-batch" class="page">
+      <div class="ph"><h1>📋 批量文案生成</h1><p>一次輸入多個主題，批量產出各平台文案</p></div>
+      <div class="nokey" id="nk-batch">⚠️ 請先在右上角輸入 Anthropic API Key。</div>
+      <div class="card">
+        <div class="ct">批量主題輸入（每行一個主題）</div>
+        <textarea id="batch-titles" placeholder="週年慶限時特賣&#10;夏季新品發布&#10;母親節感恩活動&#10;會員獨享優惠" style="min-height:130px"></textarea>
+        <div class="r2" style="margin-top:12px">
+          <div class="fg"><label>統一風格</label>
+            <select id="batch-style"><option>專業權威</option><option>溫暖親切</option><option>活潑年輕</option><option>精緻高端</option><option>故事敘述</option><option>限時促銷</option></select>
+          </div>
+          <div class="fg"><label>目標平台</label>
+            <select id="batch-plat"><option>Instagram</option><option>Facebook</option><option>LINE</option><option>官網</option></select>
+          </div>
+        </div>
+        <div class="brow"><button class="btn pri" id="btn-batch" onclick="runBatch()">批量生成 →</button></div>
+      </div>
+      <div class="loading" id="ld-batch"><div class="spin"></div>AI 正在批量生成文案...</div>
+      <div id="batch-out"></div>
+    </div>
+
+    <!-- 預覽 -->
+    <div id="p-prev" class="page">
+      <div class="ph"><h1>👁 平台預覽</h1><p>貼入文案，即時查看各平台的呈現效果</p></div>
+      <div class="card">
+        <div class="ct">文案輸入</div>
+        <textarea id="prev-inp" placeholder="將已生成的文案貼入此處..." oninput="renderPrev()" style="min-height:110px"></textarea>
+        <div class="char-c" id="prev-cc">0 字</div>
+      </div>
+      <div class="ptabs">
+        <button class="ptab on" onclick="sprev('ig',this)">Instagram</button>
+        <button class="ptab" onclick="sprev('fb',this)">Facebook</button>
+        <button class="ptab" onclick="sprev('line',this)">LINE</button>
+        <button class="ptab" onclick="sprev('web',this)">官網</button>
+      </div>
+      <div id="prev-frame"></div>
+      <div class="info green" style="margin-top:12px">💡 各平台最佳字數：Instagram 150–300字 ／ Facebook 100–200字 ／ LINE 50–100字 ／ 官網 300–600字</div>
+    </div>
+
+    <!-- 設定 -->
+    <div id="p-settings" class="page">
+      <div class="ph"><h1>⚙️ 工具設定</h1></div>
+      <div class="card">
+        <div class="ct">Anthropic API Key</div>
+        <div class="fg"><label>API Key</label><input type="password" id="s-key" placeholder="sk-ant-api03-..." oninput="syncKey()"></div>
+        <div class="info">💡 取得 API Key：前往 <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> → 左側 API Keys → Create Key。費用依使用量計算，每次約 NT$0.5–2 元。</div>
+        <div class="brow">
+          <button class="btn pri" onclick="saveKey()">儲存到瀏覽器</button>
+          <button class="btn" onclick="clearKey()">清除</button>
+        </div>
+        <p id="key-msg" style="font-size:12px;color:var(--accent);margin-top:8px;display:none">✓ 已儲存到瀏覽器本機</p>
+      </div>
+      <div class="card">
+        <div class="ct">品牌預設資料（自動帶入文案）</div>
+        <div class="fg"><label>品牌名稱</label><input type="text" id="s-brand" placeholder="例：蒔補煲心湯"></div>
+        <div class="fg"><label>品牌定位</label><input type="text" id="s-desc" placeholder="例：三十年中藥房嚴選，藥膳補湯宅配到府"></div>
+        <div class="fg"><label>目標受眾</label><input type="text" id="s-aud" placeholder="例：25-45歲女性，注重養生、產後調養需求"></div>
+        <div class="brow"><button class="btn pri" onclick="saveBrand()">儲存品牌設定</button></div>
+        <p id="brand-msg" style="font-size:12px;color:var(--accent);margin-top:8px;display:none">✓ 已儲存</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<script>
+let curStyle = '專業權威';
+let prevPlat = 'ig';
+let apiKey = localStorage.getItem('cp-api') || '';
+
+window.onload = () => {
+  if (apiKey) { document.getElementById('api-key').value = apiKey; document.getElementById('s-key').value = apiKey; document.getElementById('dot').classList.add('ok'); }
+  ['brand','desc','aud'].forEach(k => { const v = localStorage.getItem('cp-'+k); if(v) document.getElementById('s-'+k).value = v; });
+  renderPrev();
+};
+
+function checkKey() {
+  apiKey = document.getElementById('api-key').value.trim();
+  document.getElementById('s-key').value = apiKey;
+  document.getElementById('dot').className = 'dot' + (apiKey.startsWith('sk-ant') ? ' ok' : '');
+}
+function syncKey() {
+  apiKey = document.getElementById('s-key').value.trim();
+  document.getElementById('api-key').value = apiKey;
+  document.getElementById('dot').className = 'dot' + (apiKey.startsWith('sk-ant') ? ' ok' : '');
+}
+function saveKey() {
+  localStorage.setItem('cp-api', document.getElementById('s-key').value.trim());
+  apiKey = document.getElementById('s-key').value.trim();
+  const m = document.getElementById('key-msg'); m.style.display='block'; setTimeout(()=>m.style.display='none',2000);
+}
+function clearKey() { localStorage.removeItem('cp-api'); apiKey=''; document.getElementById('s-key').value=''; document.getElementById('api-key').value=''; document.getElementById('dot').className='dot'; }
+function saveBrand() {
+  ['brand','desc','aud'].forEach(k => localStorage.setItem('cp-'+k, document.getElementById('s-'+k).value));
+  const m = document.getElementById('brand-msg'); m.style.display='block'; setTimeout(()=>m.style.display='none',2000);
+}
+function nav(id, btn) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.ni').forEach(b=>b.classList.remove('on'));
+  document.getElementById('p-'+id).classList.add('on'); btn.classList.add('on');
+}
+function selS(el) { document.querySelectorAll('.so').forEach(o=>o.classList.remove('sel')); el.classList.add('sel'); curStyle=el.dataset.s; }
+function needKey(id) {
+  if (!apiKey || !apiKey.startsWith('sk-ant')) { document.getElementById('nk-'+id).classList.add('show'); return false; }
+  document.getElementById('nk-'+id).classList.remove('show'); return true;
+}
+function brandCtx() {
+  const b=localStorage.getItem('cp-brand')||'', d=localStorage.getItem('cp-desc')||'', a=localStorage.getItem('cp-aud')||'';
+  return b ? `\n品牌：${b}${d?'，'+d:''}${a?'，目標受眾：'+a:''}` : '';
+}
+
+async function callAPI(prompt, ldId, btnId) {
+  document.getElementById('ld-'+ldId).classList.add('show');
+  document.getElementById('btn-'+btnId).disabled = true;
+  try {
+    const r = await fetch('/api/claude', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 2000, messages: [{ role: 'user', content: prompt }] })
+    });
+    const d = await r.json();
+    if (d.error) throw new Error(d.error.message || JSON.stringify(d.error));
+    return d.content.map(c=>c.text||'').join('');
+  } catch(e) {
+    alert('錯誤：' + e.message);
+    return null;
+  } finally {
+    document.getElementById('ld-'+ldId).classList.remove('show');
+    document.getElementById('btn-'+btnId).disabled = false;
+  }
+}
+
+// SEO
+async function runSEO() {
+  if (!needKey('seo')) return;
+  const url = document.getElementById('seo-url').value.trim();
+  const brand = document.getElementById('seo-brand').value.trim();
+  const note = document.getElementById('seo-note').value.trim();
+  if (!url) { alert('請輸入網站網址'); return; }
+  const prompt = `你是一位資深 SEO 顧問，請針對網站「${url}」（品牌類型：${brand||'未指定'}${note?'，'+note:''}）進行完整 SEO 分析。${brandCtx()}
+
+請以 JSON 格式回覆（只回傳 JSON，不要其他文字）：
+{"score":38,"breakdown":[{"name":"技術 SEO","score":40,"color":"#1a4a7a"},{"name":"內容品質","score":35,"color":"#2d5a3d"},{"name":"關鍵字覆蓋","score":30,"color":"#8b4a1a"},{"name":"外部連結","score":20,"color":"#8b6914"}],"strong_kw":["強關鍵字1","強關鍵字2"],"weak_kw":["需加強1","需加強2"],"miss_kw":["缺席1","缺席2"],"issues":[{"title":"問題標題","desc":"說明"},{"title":"問題2","desc":"說明"},{"title":"問題3","desc":"說明"},{"title":"問題4","desc":"說明"},{"title":"問題5","desc":"說明"}],"new_kw":[{"word":"關鍵字","intent":"意圖說明","pri":"high"},{"word":"關鍵字","intent":"意圖說明","pri":"high"},{"word":"關鍵字","intent":"意圖說明","pri":"medium"},{"word":"關鍵字","intent":"意圖說明","pri":"medium"},{"word":"關鍵字","intent":"意圖說明","pri":"medium"},{"word":"關鍵字","intent":"意圖說明","pri":"low"},{"word":"關鍵字","intent":"意圖說明","pri":"low"},{"word":"關鍵字","intent":"意圖說明","pri":"low"}],"actions":{"now":["行動1","行動2","行動3","行動4"],"month":["行動1","行動2","行動3"],"ongoing":["行動1","行動2","行動3"]}}`;
+
+  const res = await callAPI(prompt, 'seo', 'seo');
+  if (!res) return;
+  try { renderSEO(JSON.parse(res.replace(/```json|```/g,'').trim())); }
+  catch(e) { document.getElementById('seo-out').innerHTML = `<div class="card"><div class="out-text">${res}</div></div>`; }
+}
+
+function renderSEO(d) {
+  const pm = {high:'⭐⭐⭐ 高',medium:'⭐⭐ 中',low:'⭐ 低'};
+  document.getElementById('seo-out').innerHTML = `
+    <div class="card"><div class="ct">整體 SEO 健康度</div>
+      <div style="font-size:42px;font-weight:800;color:${d.score>=60?'#2d5a3d':d.score>=40?'#8b6914':'#c0392b'};margin-bottom:14px">${d.score}<span style="font-size:18px;font-weight:400;color:var(--text2)"> / 100</span></div>
+      <div class="score-grid">${d.breakdown.map(s=>`<div class="sc"><div class="sc-val" style="color:${s.color}">${s.score}</div><div class="sc-name">${s.name}</div><div class="sc-bar"><div class="sc-fill" style="width:${s.score}%;background:${s.color}"></div></div></div>`).join('')}</div>
+    </div>
+    <div class="card"><div class="ct">關鍵字分析</div>
+      <p style="font-size:11px;font-weight:800;color:var(--text2);margin-bottom:4px">較強關鍵字</p><div class="tags">${d.strong_kw.map(k=>`<span class="tag tg">${k}</span>`).join('')}</div>
+      <p style="font-size:11px;font-weight:800;color:var(--text2);margin:10px 0 4px">需加強</p><div class="tags">${d.weak_kw.map(k=>`<span class="tag tgold">${k}</span>`).join('')}</div>
+      <p style="font-size:11px;font-weight:800;color:var(--text2);margin:10px 0 4px">幾乎缺席</p><div class="tags">${d.miss_kw.map(k=>`<span class="tag tr">${k}</span>`).join('')}</div>
+    </div>
+    <div class="card"><div class="ct">需立即強化的 5 大 SEO 問題</div>
+      ${d.issues.map((iss,i)=>`<div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)"><span style="font-size:14px;font-weight:800;color:var(--red);min-width:22px">0${i+1}</span><div><div style="font-size:14px;font-weight:700;margin-bottom:3px">${iss.title}</div><div style="font-size:13px;color:var(--text2);line-height:1.6">${iss.desc}</div></div></div>`).join('')}
+    </div>
+    <div class="card"><div class="ct">建議培養的新關鍵字</div>
+      <table style="width:100%;font-size:13px;border-collapse:collapse">
+        <thead><tr style="border-bottom:1px solid var(--border)"><th style="text-align:left;padding:7px 0;color:var(--text2);font-size:11px;font-weight:800">關鍵字</th><th style="text-align:left;padding:7px 0;color:var(--text2);font-size:11px;font-weight:800">搜尋意圖</th><th style="text-align:right;padding:7px 0;color:var(--text2);font-size:11px;font-weight:800">優先度</th></tr></thead>
+        <tbody>${d.new_kw.map(k=>`<tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 0;font-weight:700">${k.word}</td><td style="padding:8px 0;color:var(--text2)">${k.intent}</td><td style="padding:8px 0;text-align:right;font-size:12px">${pm[k.pri]||'⭐⭐ 中'}</td></tr>`).join('')}</tbody>
+      </table>
+    </div>
+    <div class="card"><div class="ct">優化行動清單</div>
+      <p style="font-size:11px;font-weight:800;color:var(--red);margin-bottom:6px">🔴 立即執行</p>
+      ${d.actions.now.map((a,i)=>`<div style="display:flex;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--text3);min-width:18px">${i+1}.</span>${a}</div>`).join('')}
+      <p style="font-size:11px;font-weight:800;color:var(--gold);margin:12px 0 6px">🟡 一個月內</p>
+      ${d.actions.month.map((a,i)=>`<div style="display:flex;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--text3);min-width:18px">${i+1}.</span>${a}</div>`).join('')}
+      <p style="font-size:11px;font-weight:800;color:var(--accent);margin:12px 0 6px">🟢 持續進行</p>
+      ${d.actions.ongoing.map((a,i)=>`<div style="display:flex;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--text3);min-width:18px">${i+1}.</span>${a}</div>`).join('')}
+    </div>`;
+}
+
+// Trending
+async function runTrend() {
+  if (!needKey('trend')) return;
+  const brand = document.getElementById('t-brand').value.trim();
+  const market = document.getElementById('t-market').value;
+  const comp = document.getElementById('t-comp').value.trim();
+  if (!brand) { alert('請輸入品牌或產業類別'); return; }
+  const prompt = `你是數位行銷趨勢分析師，針對「${brand}」在${market}市場分析熱門關鍵字。${comp?'競品：'+comp:''}${brandCtx()}
+只回傳 JSON：{"trending":[{"rank":1,"keyword":"關鍵字","volume":"12,400","trend":"up","note":"說明"},{"rank":2,"keyword":"關鍵字","volume":"8,800","trend":"up","note":"說明"},{"rank":3,"keyword":"關鍵字","volume":"6,200","trend":"down","note":"說明"},{"rank":4,"keyword":"關鍵字","volume":"5,100","trend":"up","note":"說明"},{"rank":5,"keyword":"關鍵字","volume":"4,300","trend":"up","note":"說明"},{"rank":6,"keyword":"關鍵字","volume":"3,800","trend":"up","note":"說明"},{"rank":7,"keyword":"關鍵字","volume":"3,200","trend":"down","note":"說明"},{"rank":8,"keyword":"關鍵字","volume":"2,900","trend":"up","note":"說明"}],"gaps":["缺口1","缺口2","缺口3"],"suggested":[{"word":"關鍵字","usage":"使用建議"},{"word":"關鍵字","usage":"使用建議"},{"word":"關鍵字","usage":"使用建議"},{"word":"關鍵字","usage":"使用建議"},{"word":"關鍵字","usage":"使用建議"}],"seasonal":"季節趨勢預測"}`;
+
+  const res = await callAPI(prompt, 'trend', 'trend');
+  if (!res) return;
+  try { renderTrend(JSON.parse(res.replace(/```json|```/g,'').trim())); }
+  catch(e) { document.getElementById('trend-out').innerHTML = `<div class="card"><div class="out-text">${res}</div></div>`; }
+}
+
+function renderTrend(d) {
+  document.getElementById('trend-out').innerHTML = `
+    <div class="card"><div class="ct">本週熱搜排行</div>
+      ${d.trending.map(t=>`<div class="trend-item"><span class="t-rank">${t.rank}</span><div style="flex:1"><div class="t-kw">${t.keyword}</div><div style="font-size:11px;color:var(--text3);margin-top:1px">${t.note}</div></div><span class="t-vol">${t.volume}</span><span class="t-arr ${t.trend==='up'?'up':'dn'}">${t.trend==='up'?'↑ 上升':'↓ 下降'}</span></div>`).join('')}
+    </div>
+    <div class="card"><div class="ct">關鍵字缺口（競品有、我方未佈局）</div><div class="tags">${d.gaps.map(g=>`<span class="tag tr">${g}</span>`).join('')}</div></div>
+    <div class="card"><div class="ct">建議融入文案的關鍵字</div>
+      ${d.suggested.map(s=>`<div style="display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px"><span class="tag tb" style="flex-shrink:0">${s.word}</span><span style="color:var(--text2);line-height:1.6">${s.usage}</span></div>`).join('')}
+    </div>
+    <div class="info">📅 <strong>季節趨勢預測：</strong>${d.seasonal}</div>`;
+}
+
+// Generate
+async function runGen() {
+  if (!needKey('gen')) return;
+  const title = document.getElementById('g-title').value.trim();
+  const brief = document.getElementById('g-brief').value.trim();
+  const plats = [];
+  if(document.getElementById('p-ig').checked) plats.push('Instagram（150-300字，含表情符號與hashtag）');
+  if(document.getElementById('p-fb').checked) plats.push('Facebook（100-200字，自然親切）');
+  if(document.getElementById('p-line').checked) plats.push('LINE官方帳號（50-100字，精簡直接）');
+  if(document.getElementById('p-web').checked) plats.push('官方網站（300-500字，SEO友善）');
+  if (!title) { alert('請輸入文案標題'); return; }
+  if (!plats.length) { alert('請至少選擇一個平台'); return; }
+
+  const prompt = `你是擅長社群行銷的高階文案專員。以「${curStyle}」風格撰寫文案：
+主題：${title}${brief?'\n說明：'+brief:''}${brandCtx()}
+請為以下平台分別撰寫（每個用【平台名稱】開頭）：
+${plats.join('\n')}
+文案要有感染力，符合${curStyle}風格，自然融入關鍵字。`;
+
+  const res = await callAPI(prompt, 'gen', 'gen');
+  if (!res) return;
+
+  const platNames = ['Instagram','Facebook','LINE','官網'];
+  const sections = [];
+  let cur = null, lines = [];
+  res.split('\n').forEach(line => {
+    const m = platNames.find(p => line.includes('【') && line.includes(p));
+    if (m) { if (cur) sections.push({p:cur, t:lines.join('\n').trim()}); cur=m; lines=[]; }
+    else if (cur) lines.push(line);
+  });
+  if (cur) sections.push({p:cur, t:lines.join('\n').trim()});
+
+  if (!sections.length) {
+    document.getElementById('gen-out').innerHTML = `<div class="card"><div class="out-hd"><span class="out-label">生成結果</span><button class="cbtn" onclick="doCopy(this,\`${encodeURIComponent(res)}\`)">複製</button></div><div class="out-text">${res}</div></div>`;
+    return;
+  }
+  document.getElementById('gen-out').innerHTML = sections.map(s=>`
+    <div class="card">
+      <div class="out-hd"><span class="out-label">${s.p}</span>
+        <div style="display:flex;gap:6px;align-items:center"><span style="font-size:11px;color:var(--text3)">${s.t.length}字</span>
+          <button class="cbtn" onclick="doCopy(this,'${encodeURIComponent(s.t)}')">複製</button>
+          <button class="cbtn" onclick="loadPrev('${encodeURIComponent(s.t)}')">預覽</button>
+        </div>
+      </div>
+      <div class="out-text">${s.t}</div>
+    </div>`).join('');
+}
+
+async function runAB() {
+  if (!needKey('gen')) return;
+  const title = document.getElementById('g-title').value.trim();
+  if (!title) { alert('請先輸入文案主題'); return; }
+  const prompt = `你是擅長 A/B 測試的文案專員。為「${title}」以「${curStyle}」風格產生 2 個 Instagram A/B 測試版本。${brandCtx()}
+版本A 與版本B 使用完全不同的切入角度，各150-300字，含表情符號與hashtag。
+最後說明兩版本的策略差異與適合受眾。`;
+  const res = await callAPI(prompt, 'gen', 'ab');
+  if (!res) return;
+  document.getElementById('gen-out').innerHTML = `<div class="card"><div class="out-hd"><span class="out-label">A/B 測試版本</span><button class="cbtn" onclick="doCopy(this,'${encodeURIComponent(res)}')">複製全部</button></div><div class="out-text">${res}</div></div>`;
+}
+
+// Batch
+async function runBatch() {
+  if (!needKey('batch')) return;
+  const titles = document.getElementById('batch-titles').value.trim().split('\n').filter(t=>t.trim());
+  const style = document.getElementById('batch-style').value;
+  const plat = document.getElementById('batch-plat').value;
+  if (!titles.length) { alert('請輸入至少一個主題'); return; }
+  const lenGuide = plat==='Instagram'?'150-300字，含表情符號與hashtag':plat==='Facebook'?'100-200字，自然親切':plat==='LINE'?'50-100字，精簡有力':'300-500字，SEO友善';
+  const prompt = `你是高階行銷文案專員。以「${style}」風格，為以下每個主題各撰寫一則${plat}文案（${lenGuide}），每則用【主題名稱】開頭。${brandCtx()}
+主題：\n${titles.map((t,i)=>`${i+1}. ${t}`).join('\n')}`;
+  const res = await callAPI(prompt, 'batch', 'batch');
+  if (!res) return;
+  document.getElementById('batch-out').innerHTML = `<div class="card"><div class="out-hd"><span class="out-label">批量結果 — ${titles.length} 則 ${plat} 文案</span><button class="cbtn" onclick="doCopy(this,'${encodeURIComponent(res)}')">複製全部</button></div><div class="out-text">${res}</div></div>`;
+}
+
+// Preview
+function sprev(id, btn) { document.querySelectorAll('.ptab').forEach(t=>t.classList.remove('on')); btn.classList.add('on'); prevPlat=id; renderPrev(); }
+function loadPrev(enc) {
+  document.getElementById('prev-inp').value = decodeURIComponent(enc);
+  nav('prev', document.querySelectorAll('.ni')[4]);
+  renderPrev();
+}
+function renderPrev() {
+  const raw = document.getElementById('prev-inp').value;
+  const text = raw || '（在上方貼入文案內容）';
+  const safe = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  document.getElementById('prev-cc').textContent = raw.length + ' 字';
+  const frames = {
+    ig:`<div class="pframe"><div class="ig-hd"><div class="ig-av"></div><div class="ig-nm">your_brand</div></div><div class="ig-img">圖片區域 1:1</div><div class="ig-body">${safe}</div></div>`,
+    fb:`<div class="pframe"><div class="fb-hd"><div class="fb-av">B</div><div><div class="fb-nm">品牌粉絲專頁</div><div class="fb-tm">剛剛 · 🌍</div></div></div><div class="fb-body">${safe}</div><div class="fb-img">貼文圖片區域</div></div>`,
+    line:`<div class="pframe"><div class="line-bg"><div class="line-lbl">LINE 官方帳號推播</div><div class="line-bub">${safe}</div></div></div>`,
+    web:`<div class="pframe"><div class="web-pv"><div class="web-h1">官網內容區塊</div><div class="web-body">${safe}</div></div></div>`
+  };
+  document.getElementById('prev-frame').innerHTML = frames[prevPlat];
+}
+
+function doCopy(btn, enc) {
+  navigator.clipboard.writeText(decodeURIComponent(enc)).then(()=>{ btn.textContent='✓ 已複製'; setTimeout(()=>btn.textContent='複製',1500); });
+}
+</script>
+</body>
+</html>
