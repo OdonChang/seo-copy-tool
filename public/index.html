@@ -697,190 +697,186 @@ let lastSEOData = null;
 async function exportPDF() {
   if (!lastSEOData) { alert('請先執行 SEO 分析'); return; }
   const btn = document.getElementById('btn-pdf') || document.querySelector('[onclick="exportPDF()"]');
-  if (btn) { btn.textContent = '⏳ 產生中...'; btn.disabled = true; }
+  if (btn) { btn.textContent = '⏳ 產生中，請稍候...'; btn.disabled = true; }
 
-  // Load jsPDF from CDN
-  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+  try {
+    // 載入需要的套件
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
 
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const W = 210, margin = 18, cw = W - margin * 2;
-  let y = 0;
+    const d = lastSEOData;
+    const now = new Date().toLocaleDateString('zh-TW');
 
-  // Helpers
-  const hex2rgb = h => { const r=parseInt(h.slice(1,3),16),g=parseInt(h.slice(3,5),16),b=parseInt(h.slice(5,7),16); return [r,g,b]; };
-  function addPage() { doc.addPage(); y = margin; }
-  function checkY(need) { if (y + need > 280) addPage(); }
-  function setFont(style='normal', size=10, color=[30,24,20]) {
-    doc.setFont('helvetica', style);
-    doc.setFontSize(size);
-    doc.setTextColor(...color);
+    // 建立一個隱藏的報告 DOM，用瀏覽器原生渲染（支援中文字型）
+    const report = document.createElement('div');
+    report.style.cssText = `
+      position:fixed; left:-9999px; top:0;
+      width:794px; background:#ffffff;
+      font-family:'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif;
+      padding:0; margin:0;
+    `;
+
+    const scoreColor = d.score >= 60 ? '#2d5a3d' : d.score >= 40 ? '#8b6914' : '#c0392b';
+    const priLabel = { high:'⭐⭐⭐ 高優先', medium:'⭐⭐ 中優先', low:'⭐ 低優先' };
+
+    const kwBadge = (kw, bg, fg) =>
+      `<span style="display:inline-block;padding:3px 10px;border-radius:20px;background:${bg};color:${fg};font-size:12px;font-weight:700;margin:3px 3px">${kw}</span>`;
+
+    report.innerHTML = `
+      <!-- 封面 -->
+      <div style="width:794px;height:1123px;background:#2d5a3d;display:flex;flex-direction:column;align-items:center;justify-content:center;page-break-after:always">
+        <div style="background:#fff;border-radius:16px;padding:50px 60px;text-align:center;width:500px">
+          <div style="font-size:13px;color:#9c9690;letter-spacing:.1em;margin-bottom:16px">SEO ANALYSIS REPORT</div>
+          <div style="font-size:32px;font-weight:800;color:#2d5a3d;margin-bottom:8px">SEO 分析報告</div>
+          <div style="font-size:14px;color:#6b6560;margin-bottom:36px">文案工具 Pro</div>
+          <div style="width:120px;height:120px;border-radius:50%;border:8px solid ${scoreColor};display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0 auto 24px">
+            <div style="font-size:42px;font-weight:800;color:${scoreColor};line-height:1">${d.score}</div>
+            <div style="font-size:12px;color:#9c9690;margin-top:4px">/ 100</div>
+          </div>
+          <div style="font-size:14px;color:#6b6560">整體 SEO 健康度</div>
+          <div style="margin-top:32px;padding-top:20px;border-top:1px solid #e2ddd7;font-size:12px;color:#9c9690">報告產生日期：${now}</div>
+        </div>
+      </div>
+
+      <!-- 各面向評分 -->
+      <div style="padding:48px 56px;background:#f7f5f2;min-height:400px">
+        <div style="font-size:22px;font-weight:800;color:#1a1814;margin-bottom:24px;padding-bottom:12px;border-bottom:3px solid #2d5a3d">各面向評分</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:40px">
+          ${d.breakdown.map(s => `
+            <div style="background:#fff;border-radius:12px;padding:20px 16px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.06)">
+              <div style="font-size:36px;font-weight:800;color:${s.color}">${s.score}</div>
+              <div style="font-size:12px;color:#6b6560;margin:6px 0 10px">${s.name}</div>
+              <div style="height:6px;border-radius:3px;background:#e2ddd7;overflow:hidden">
+                <div style="height:100%;width:${s.score}%;background:${s.color};border-radius:3px"></div>
+              </div>
+            </div>`).join('')}
+        </div>
+
+        <!-- 關鍵字分析 -->
+        <div style="font-size:22px;font-weight:800;color:#1a1814;margin-bottom:20px;padding-bottom:12px;border-bottom:3px solid #2d5a3d">關鍵字分析</div>
+        <div style="background:#fff;border-radius:12px;padding:24px;margin-bottom:40px">
+          <div style="margin-bottom:16px">
+            <div style="font-size:12px;font-weight:800;color:#2d5a3d;margin-bottom:8px">✓ 較強關鍵字</div>
+            <div>${d.strong_kw.map(k => kwBadge(k,'#e8f0ea','#2d5a3d')).join('')}</div>
+          </div>
+          <div style="margin-bottom:16px">
+            <div style="font-size:12px;font-weight:800;color:#8b6914;margin-bottom:8px">△ 需要加強</div>
+            <div>${d.weak_kw.map(k => kwBadge(k,'#fdf8e8','#8b6914')).join('')}</div>
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:800;color:#c0392b;margin-bottom:8px">✗ 幾乎缺席</div>
+            <div>${d.miss_kw.map(k => kwBadge(k,'#fdecea','#c0392b')).join('')}</div>
+          </div>
+        </div>
+
+        <!-- SEO 問題 -->
+        <div style="font-size:22px;font-weight:800;color:#1a1814;margin-bottom:20px;padding-bottom:12px;border-bottom:3px solid #c0392b">需立即強化的 5 大 SEO 問題</div>
+        <div style="background:#fff;border-radius:12px;padding:8px 24px;margin-bottom:40px">
+          ${d.issues.map((iss,i) => `
+            <div style="display:flex;gap:16px;padding:16px 0;border-bottom:1px solid #f0ede8">
+              <div style="font-size:20px;font-weight:800;color:#c0392b;min-width:32px">0${i+1}</div>
+              <div>
+                <div style="font-size:15px;font-weight:700;color:#1a1814;margin-bottom:4px">${iss.title}</div>
+                <div style="font-size:13px;color:#6b6560;line-height:1.7">${iss.desc}</div>
+              </div>
+            </div>`).join('')}
+        </div>
+
+        <!-- 新關鍵字 -->
+        <div style="font-size:22px;font-weight:800;color:#1a1814;margin-bottom:20px;padding-bottom:12px;border-bottom:3px solid #2d5a3d">建議培養的新關鍵字</div>
+        <div style="background:#fff;border-radius:12px;overflow:hidden;margin-bottom:40px">
+          <div style="display:grid;grid-template-columns:1.2fr 2.5fr 1fr;background:#2d5a3d;padding:12px 20px">
+            <div style="font-size:12px;font-weight:800;color:#fff">關鍵字</div>
+            <div style="font-size:12px;font-weight:800;color:#fff">搜尋意圖</div>
+            <div style="font-size:12px;font-weight:800;color:#fff;text-align:right">優先度</div>
+          </div>
+          ${d.new_kw.map((k,i) => `
+            <div style="display:grid;grid-template-columns:1.2fr 2.5fr 1fr;padding:12px 20px;background:${i%2===0?'#fff':'#f7f5f2'};align-items:center">
+              <div style="font-size:13px;font-weight:700;color:#1a1814">${k.word}</div>
+              <div style="font-size:12px;color:#6b6560;line-height:1.6">${k.intent}</div>
+              <div style="font-size:12px;font-weight:700;color:#2d5a3d;text-align:right">${priLabel[k.pri]||'⭐⭐ 中優先'}</div>
+            </div>`).join('')}
+        </div>
+
+        <!-- 行動清單 -->
+        <div style="font-size:22px;font-weight:800;color:#1a1814;margin-bottom:20px;padding-bottom:12px;border-bottom:3px solid #2d5a3d">優化行動清單</div>
+        ${[
+          { label:'🔴 立即執行', items: d.actions.now, bg:'#fdecea', fg:'#c0392b', bar:'#c0392b' },
+          { label:'🟡 一個月內完成', items: d.actions.month, bg:'#fdf8e8', fg:'#8b6914', bar:'#8b6914' },
+          { label:'🟢 持續進行', items: d.actions.ongoing, bg:'#e8f0ea', fg:'#2d5a3d', bar:'#2d5a3d' }
+        ].map(ph => `
+          <div style="margin-bottom:20px">
+            <div style="background:${ph.bg};border-left:4px solid ${ph.bar};padding:10px 16px;border-radius:0 8px 8px 0;font-size:13px;font-weight:800;color:${ph.fg};margin-bottom:8px">${ph.label}</div>
+            ${ph.items.map((a,i) => `
+              <div style="display:flex;gap:12px;padding:9px 16px;border-bottom:1px solid #f0ede8;font-size:13px;color:#1a1814">
+                <span style="color:#9c9690;min-width:20px;font-weight:700">${i+1}.</span>${a}
+              </div>`).join('')}
+          </div>`).join('')}
+
+        <!-- 頁尾 -->
+        <div style="margin-top:40px;padding-top:16px;border-top:1px solid #e2ddd7;display:flex;justify-content:space-between;font-size:11px;color:#9c9690">
+          <span>文案工具 Pro  |  SEO 分析報告</span>
+          <span>${now}</span>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(report);
+
+    // 等待字型載入
+    await document.fonts.ready;
+    await new Promise(r => setTimeout(r, 300));
+
+    const { jsPDF } = window.jspdf;
+
+    // 截圖封面（第一個子元素）
+    const coverEl = report.children[0];
+    const contentEl = report.children[1];
+
+    const coverCanvas = await html2canvas(coverEl, { scale: 2, useCORS: true, backgroundColor: '#2d5a3d' });
+    const contentCanvas = await html2canvas(contentEl, { scale: 2, useCORS: true, backgroundColor: '#f7f5f2' });
+
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'px', format: 'a4' });
+    const pdfW = pdf.internal.pageSize.getWidth();
+    const pdfH = pdf.internal.pageSize.getHeight();
+
+    // 封面頁
+    const coverImg = coverCanvas.toDataURL('image/jpeg', 0.95);
+    pdf.addImage(coverImg, 'JPEG', 0, 0, pdfW, pdfH);
+
+    // 內容頁（可能很長，分頁處理）
+    const contentImg = contentCanvas.toDataURL('image/jpeg', 0.92);
+    const contentRatio = contentCanvas.width / contentCanvas.height;
+    const contentW = pdfW;
+    const contentH = contentW / contentRatio;
+    const pagesNeeded = Math.ceil(contentH / pdfH);
+
+    for (let p = 0; p < pagesNeeded; p++) {
+      pdf.addPage();
+      const srcY = (p * pdfH / contentH) * contentCanvas.height;
+      const srcH = (pdfH / contentH) * contentCanvas.height;
+
+      const pageCanvas = document.createElement('canvas');
+      pageCanvas.width = contentCanvas.width;
+      pageCanvas.height = Math.min(srcH, contentCanvas.height - srcY);
+      const ctx = pageCanvas.getContext('2d');
+      ctx.fillStyle = '#f7f5f2';
+      ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+      ctx.drawImage(contentCanvas, 0, srcY, contentCanvas.width, pageCanvas.height, 0, 0, contentCanvas.width, pageCanvas.height);
+
+      const pageImg = pageCanvas.toDataURL('image/jpeg', 0.92);
+      const pageH = (pageCanvas.height / contentCanvas.width) * contentW;
+      pdf.addImage(pageImg, 'JPEG', 0, 0, contentW, pageH);
+    }
+
+    document.body.removeChild(report);
+    pdf.save(`SEO分析報告_${now.replace(/\//g,'-')}.pdf`);
+
+  } catch(e) {
+    alert('PDF 匯出失敗：' + e.message);
+  } finally {
+    if (btn) { btn.textContent = '⬇ 匯出 PDF 報告'; btn.disabled = false; }
   }
-  function drawRect(x, yy, w, h, color) {
-    doc.setFillColor(...color);
-    doc.roundedRect(x, yy, w, h, 2, 2, 'F');
-  }
-  function wrapText(text, x, yy, maxW, lineH=5) {
-    const lines = doc.splitTextToSize(text, maxW);
-    doc.text(lines, x, yy);
-    return yy + lines.length * lineH;
-  }
-
-  // ── Cover Page ──
-  drawRect(0, 0, W, 297, [45, 90, 61]);
-  doc.setFillColor(255,255,255);
-  doc.roundedRect(margin, 60, cw, 140, 4, 4, 'F');
-
-  setFont('bold', 22, [45,90,61]);
-  doc.text('SEO 分析報告', W/2, 88, { align:'center' });
-
-  setFont('normal', 11, [107,101,96]);
-  doc.text('Powered by 文案工具 Pro', W/2, 98, { align:'center' });
-
-  // Score circle
-  const d = lastSEOData;
-  const scoreColor = d.score >= 60 ? [45,90,61] : d.score >= 40 ? [139,105,20] : [192,57,43];
-  doc.setDrawColor(...scoreColor);
-  doc.setLineWidth(4);
-  doc.circle(W/2, 128, 18, 'S');
-  setFont('bold', 20, scoreColor);
-  doc.text(String(d.score), W/2, 132, { align:'center' });
-  setFont('normal', 9, [107,101,96]);
-  doc.text('整體 SEO 健康度', W/2, 140, { align:'center' });
-
-  const now = new Date().toLocaleDateString('zh-TW');
-  setFont('normal', 9, [156,150,144]);
-  doc.text(`報告產生日期：${now}`, W/2, 175, { align:'center' });
-
-  // ── Page 2: Score Breakdown ──
-  addPage();
-  y = margin;
-
-  setFont('bold', 16, [30,24,20]);
-  doc.text('各面向評分', margin, y); y += 10;
-
-  const cols = Math.min(d.breakdown.length, 4);
-  const bw = (cw - (cols-1)*6) / cols;
-  d.breakdown.forEach((s, i) => {
-    const bx = margin + i * (bw + 6);
-    const rgb = hex2rgb(s.color);
-    drawRect(bx, y, bw, 28, [rgb[0]*0.15+235, rgb[1]*0.15+235, rgb[2]*0.15+235]);
-    doc.setFont('helvetica','bold'); doc.setFontSize(18); doc.setTextColor(...rgb);
-    doc.text(String(s.score), bx + bw/2, y+13, { align:'center' });
-    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(107,101,96);
-    doc.text(s.name, bx + bw/2, y+21, { align:'center' });
-    // bar
-    doc.setFillColor(226,221,215);
-    doc.roundedRect(bx+4, y+23, bw-8, 2, 1, 1, 'F');
-    doc.setFillColor(...rgb);
-    doc.roundedRect(bx+4, y+23, (bw-8)*s.score/100, 2, 1, 1, 'F');
-  });
-  y += 38;
-
-  // ── Keyword Analysis ──
-  setFont('bold', 13, [30,24,20]);
-  doc.text('關鍵字分析', margin, y); y += 8;
-
-  const kwSections = [
-    { label:'✓ 較強關鍵字', items: d.strong_kw, bg:[232,240,234], fg:[45,90,61] },
-    { label:'△ 需加強', items: d.weak_kw, bg:[253,248,232], fg:[139,105,20] },
-    { label:'✗ 幾乎缺席', items: d.miss_kw, bg:[253,238,234], fg:[192,57,43] },
-  ];
-  kwSections.forEach(sec => {
-    checkY(14);
-    setFont('bold', 9, sec.fg);
-    doc.text(sec.label, margin, y); y += 5;
-    let tx = margin;
-    sec.items.forEach(kw => {
-      const tw = doc.getTextWidth(kw) + 8;
-      if (tx + tw > W - margin) { tx = margin; y += 7; checkY(10); }
-      drawRect(tx, y-4, tw, 6, sec.bg);
-      setFont('bold', 8, sec.fg);
-      doc.text(kw, tx+4, y); tx += tw + 4;
-    });
-    y += 12;
-  });
-
-  // ── Issues ──
-  checkY(20);
-  setFont('bold', 13, [30,24,20]);
-  doc.text('需立即強化的 SEO 問題', margin, y); y += 8;
-  d.issues.forEach((iss, i) => {
-    checkY(20);
-    drawRect(margin, y-3, 6, 14, [192,57,43]);
-    setFont('bold', 9, [30,24,20]);
-    doc.text(`0${i+1}  ${iss.title}`, margin+9, y+1);
-    setFont('normal', 8, [107,101,96]);
-    const endY = wrapText(iss.desc, margin+9, y+6, cw-12, 4.5);
-    y = endY + 5;
-  });
-
-  // ── New Keywords Table ──
-  checkY(30);
-  setFont('bold', 13, [30,24,20]);
-  doc.text('建議培養的新關鍵字', margin, y); y += 8;
-
-  // Table header
-  drawRect(margin, y-3, cw, 8, [45,90,61]);
-  setFont('bold', 8, [255,255,255]);
-  doc.text('關鍵字', margin+4, y+1);
-  doc.text('搜尋意圖', margin+45, y+1);
-  doc.text('優先度', margin+cw-20, y+1);
-  y += 10;
-
-  const priLabel = { high:'⭐⭐⭐ 高', medium:'⭐⭐ 中', low:'⭐ 低' };
-  d.new_kw.forEach((k, i) => {
-    checkY(12);
-    if (i % 2 === 0) drawRect(margin, y-3.5, cw, 8, [247,245,242]);
-    setFont('bold', 8, [30,24,20]);
-    doc.text(k.word, margin+4, y);
-    setFont('normal', 8, [107,101,96]);
-    const intentLines = doc.splitTextToSize(k.intent, cw-60);
-    doc.text(intentLines[0] + (intentLines.length>1?'…':''), margin+45, y);
-    setFont('bold', 8, [45,90,61]);
-    doc.text(priLabel[k.pri]||'⭐⭐ 中', margin+cw-20, y);
-    y += 8;
-  });
-  y += 4;
-
-  // ── Action Plan ──
-  checkY(30);
-  setFont('bold', 13, [30,24,20]);
-  doc.text('優化行動清單', margin, y); y += 8;
-
-  const phases = [
-    { label:'🔴 立即執行', items: d.actions.now, bg:[253,238,234], fg:[192,57,43] },
-    { label:'🟡 一個月內', items: d.actions.month, bg:[253,248,232], fg:[139,105,20] },
-    { label:'🟢 持續進行', items: d.actions.ongoing, bg:[232,240,234], fg:[45,90,61] },
-  ];
-  phases.forEach(ph => {
-    checkY(14);
-    drawRect(margin, y-3, cw, 7, ph.bg);
-    setFont('bold', 9, ph.fg);
-    doc.text(ph.label, margin+4, y+0.5); y += 10;
-    ph.items.forEach((a, i) => {
-      checkY(10);
-      setFont('normal', 8, [30,24,20]);
-      const endY = wrapText(`${i+1}.  ${a}`, margin+4, y, cw-8, 4.5);
-      y = endY + 3;
-    });
-    y += 4;
-  });
-
-  // ── Footer on all pages ──
-  const totalPages = doc.getNumberOfPages();
-  for (let p = 1; p <= totalPages; p++) {
-    doc.setPage(p);
-    doc.setDrawColor(226,221,215);
-    doc.setLineWidth(0.3);
-    doc.line(margin, 288, W-margin, 288);
-    setFont('normal', 8, [156,150,144]);
-    doc.text('文案工具 Pro  |  SEO 分析報告', margin, 293);
-    doc.text(`${p} / ${totalPages}`, W-margin, 293, { align:'right' });
-  }
-
-  doc.save(`SEO分析報告_${now.replace(/\//g,'-')}.pdf`);
-  if (btn) { btn.textContent = '⬇ 匯出 PDF 報告'; btn.disabled = false; }
 }
 
 function loadScript(src) {
