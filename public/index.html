@@ -174,6 +174,7 @@ a{color:var(--accent)}
       </div>
       <div class="loading" id="ld-seo"><div class="spin"></div>AI 正在分析網站 SEO 結構，請稍候...</div>
       <div id="seo-out"></div>
+      <div id="seo-pdf-bar" style="display:none;margin-bottom:24px"><button class="btn pri" onclick="exportPDF()">⬇ 匯出 PDF 報告</button><span style="font-size:12px;color:var(--text2);margin-left:10px">含圖表與完整分析內容</span></div>
     </div>
 
     <!-- 熱門關鍵字 -->
@@ -201,6 +202,16 @@ a{color:var(--accent)}
         <div class="ct">文案主題</div>
         <div class="fg"><label>標題 / 主題</label><input type="text" id="g-title" placeholder="例：夏季新品上市、週年慶特賣..."></div>
         <div class="fg"><label>補充說明（產品特色、活動細節、目標受眾）</label><textarea id="g-brief" placeholder="例：主打 30-45 歲女性，強調天然成分，限時 72 小時優惠..."></textarea></div>
+        <div class="brow" style="margin-top:8px"><button class="btn" id="btn-kw" onclick="analyzeKeywords()">🔍 分析關鍵字 + Google Trends →</button></div>
+      </div>
+      <div id="kw-panel" style="display:none" class="card">
+        <div class="ct">🔥 近10日 Google Trends 熱門關鍵字（點選加入文案）</div>
+        <div class="loading" id="ld-kw" style="padding:0;margin-bottom:10px"><div class="spin"></div><span style="font-size:13px;color:var(--text2)">AI 正在分析關鍵字與趨勢...</span></div>
+        <div id="kw-tags" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px"></div>
+        <div id="kw-selected-wrap" style="display:none">
+          <p style="font-size:11px;font-weight:800;color:var(--text2);margin-bottom:6px">已選關鍵字（將自動帶入文案）</p>
+          <div id="kw-selected" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+        </div>
       </div>
       <div class="card">
         <div class="ct">文案風格</div>
@@ -395,7 +406,12 @@ async function runSEO() {
 
   const res = await callAPI(prompt, 'seo', 'seo');
   if (!res) return;
-  try { renderSEO(parseJSON(res)); }
+  try {
+    const parsed = parseJSON(res);
+    lastSEOData = parsed;
+    renderSEO(parsed);
+    document.getElementById('seo-pdf-bar').style.display = 'block';
+  }
   catch(e) { document.getElementById('seo-out').innerHTML = `<div class="card"><div class="out-text" style="color:var(--red)">解析失敗，請重新分析一次。</div></div>`; }
 }
 
@@ -475,7 +491,8 @@ async function runGen() {
 主題：${title}${brief?'\n說明：'+brief:''}${brandCtx()}
 請為以下平台分別撰寫（每個用【平台名稱】開頭）：
 ${plats.join('\n')}
-文案要有感染力，符合${curStyle}風格，自然融入關鍵字。`;
+文案要有感染力，符合${curStyle}風格，自然融入關鍵字。${selectedKws.length ? '\n\n請務必將以下關鍵字自然融入文案中：' + selectedKws.join('、') : ''}`;
+
 
   const res = await callAPI(prompt, 'gen', 'gen');
   if (!res) return;
@@ -552,6 +569,327 @@ function renderPrev() {
     web:`<div class="pframe"><div class="web-pv"><div class="web-h1">官網內容區塊</div><div class="web-body">${safe}</div></div></div>`
   };
   document.getElementById('prev-frame').innerHTML = frames[prevPlat];
+}
+
+
+// ── 關鍵字分析 + Google Trends ──────────────────────────────
+let selectedKws = [];
+
+async function analyzeKeywords() {
+  if (!needKey('gen')) return;
+  const title = document.getElementById('g-title').value.trim();
+  const brief = document.getElementById('g-brief').value.trim();
+  if (!title) { alert('請先輸入文案標題'); return; }
+
+  document.getElementById('btn-kw').disabled = true;
+  const panel = document.getElementById('kw-panel');
+  panel.style.display = 'block';
+  document.getElementById('ld-kw').style.display = 'flex';
+  document.getElementById('kw-tags').innerHTML = '';
+  document.getElementById('kw-selected-wrap').style.display = 'none';
+  selectedKws = [];
+
+  const today = new Date().toISOString().split('T')[0];
+  const prompt = `你是一位專業的 SEO 與數位行銷分析師。請根據以下文案資訊，模擬分析近10日（截至${today}）在台灣 Google Trends 上的熱門相關關鍵字。
+
+文案標題：${title}
+補充說明：${brief || '無'}
+${brandCtx()}
+
+請從以下三個維度分析並提供恰好10個關鍵字：
+1. 與文案主題直接相關的搜尋熱詞（4個）
+2. 近10日在台灣 Google Trends 上升趨勢的相關詞（3個）
+3. 長尾關鍵字（低競爭但高轉換意圖）（3個）
+
+重要：只回傳純 JSON，不要任何說明或標記：
+{"keywords":[{"word":"關鍵字","type":"direct","trend":85,"reason":"搜尋量說明"},{"word":"關鍵字","type":"trending","trend":92,"reason":"近期趨勢說明"},{"word":"關鍵字","type":"longtail","trend":67,"reason":"長尾意圖說明"}]}
+type 只能是 direct、trending、longtail 三種。trend 是0-100的熱度分數。共10個。`;
+
+  // Direct API call (manages its own loading)
+  let res = null;
+  try {
+    const r = await fetch('/api/claude', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1500, messages: [{ role: 'user', content: prompt }] })
+    });
+    const d2 = await r.json();
+    if (d2.error) throw new Error(d2.error.message || JSON.stringify(d2.error));
+    res = d2.content.map(c=>c.text||'').join('');
+  } catch(e) {
+    alert('關鍵字分析錯誤：' + e.message);
+  } finally {
+    document.getElementById('btn-kw').disabled = false;
+  }
+  document.getElementById('ld-kw').style.display = 'none';
+  if (!res) return;
+
+  try {
+    const data = parseJSON(res);
+    renderKeywords(data.keywords);
+  } catch(e) {
+    document.getElementById('kw-tags').innerHTML = '<span style="color:var(--red);font-size:13px">分析失敗，請重試</span>';
+  }
+}
+
+function renderKeywords(kws) {
+  const typeLabel = { direct:'直接相關', trending:'趨勢上升', longtail:'長尾關鍵字' };
+  const typeColor = { direct:'tg', trending:'tr', longtail:'tb' };
+  const typeIcon = { direct:'🎯', trending:'🔥', longtail:'🌱' };
+
+  document.getElementById('kw-tags').innerHTML = kws.map((k,i) => `
+    <div onclick="toggleKw(this,'${encodeURIComponent(k.word)}')"
+      style="cursor:pointer;border:1.5px solid var(--border);border-radius:var(--r);padding:10px 13px;transition:all .15s;min-width:130px;max-width:180px"
+      id="kwcard-${i}">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+        <span style="font-size:10px;font-weight:800;color:var(--text3)">${typeIcon[k.type]} ${typeLabel[k.type]||k.type}</span>
+        <span style="font-size:10px;font-weight:700;color:${k.trend>=80?'#c0392b':k.trend>=60?'#8b6914':'#2d5a3d'}">${k.trend}</span>
+      </div>
+      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px">${k.word}</div>
+      <div style="width:100%;height:3px;background:var(--border);border-radius:2px;overflow:hidden">
+        <div style="height:100%;width:${k.trend}%;background:${k.trend>=80?'#c0392b':k.trend>=60?'#8b6914':'#2d5a3d'};border-radius:2px"></div>
+      </div>
+      <div style="font-size:11px;color:var(--text2);margin-top:5px;line-height:1.4">${k.reason}</div>
+    </div>`).join('');
+}
+
+function toggleKw(el, enc) {
+  const word = decodeURIComponent(enc);
+  const idx = selectedKws.indexOf(word);
+  if (idx === -1) {
+    selectedKws.push(word);
+    el.style.borderColor = 'var(--accent)';
+    el.style.background = 'var(--accent-l)';
+  } else {
+    selectedKws.splice(idx, 1);
+    el.style.borderColor = 'var(--border)';
+    el.style.background = '';
+  }
+  const wrap = document.getElementById('kw-selected-wrap');
+  if (selectedKws.length) {
+    wrap.style.display = 'block';
+    document.getElementById('kw-selected').innerHTML = selectedKws.map(w =>
+      `<span class="tag tg" style="cursor:pointer" onclick="removeKw(this,'${encodeURIComponent(w)}')">${w} ✕</span>`
+    ).join('');
+  } else {
+    wrap.style.display = 'none';
+  }
+}
+
+function removeKw(el, enc) {
+  const word = decodeURIComponent(enc);
+  selectedKws = selectedKws.filter(w => w !== word);
+  el.remove();
+  // also deselect the card
+  document.querySelectorAll('#kw-tags > div').forEach(card => {
+    const wEl = card.querySelector('div:nth-child(2)');
+    if (wEl && wEl.textContent === word) {
+      card.style.borderColor = 'var(--border)';
+      card.style.background = '';
+    }
+  });
+  if (!selectedKws.length) document.getElementById('kw-selected-wrap').style.display = 'none';
+}
+
+// ── PDF 匯出 ────────────────────────────────────────────────
+let lastSEOData = null;
+
+async function exportPDF() {
+  if (!lastSEOData) { alert('請先執行 SEO 分析'); return; }
+  const btn = document.getElementById('btn-pdf') || document.querySelector('[onclick="exportPDF()"]');
+  if (btn) { btn.textContent = '⏳ 產生中...'; btn.disabled = true; }
+
+  // Load jsPDF from CDN
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const W = 210, margin = 18, cw = W - margin * 2;
+  let y = 0;
+
+  // Helpers
+  const hex2rgb = h => { const r=parseInt(h.slice(1,3),16),g=parseInt(h.slice(3,5),16),b=parseInt(h.slice(5,7),16); return [r,g,b]; };
+  function addPage() { doc.addPage(); y = margin; }
+  function checkY(need) { if (y + need > 280) addPage(); }
+  function setFont(style='normal', size=10, color=[30,24,20]) {
+    doc.setFont('helvetica', style);
+    doc.setFontSize(size);
+    doc.setTextColor(...color);
+  }
+  function drawRect(x, yy, w, h, color) {
+    doc.setFillColor(...color);
+    doc.roundedRect(x, yy, w, h, 2, 2, 'F');
+  }
+  function wrapText(text, x, yy, maxW, lineH=5) {
+    const lines = doc.splitTextToSize(text, maxW);
+    doc.text(lines, x, yy);
+    return yy + lines.length * lineH;
+  }
+
+  // ── Cover Page ──
+  drawRect(0, 0, W, 297, [45, 90, 61]);
+  doc.setFillColor(255,255,255);
+  doc.roundedRect(margin, 60, cw, 140, 4, 4, 'F');
+
+  setFont('bold', 22, [45,90,61]);
+  doc.text('SEO 分析報告', W/2, 88, { align:'center' });
+
+  setFont('normal', 11, [107,101,96]);
+  doc.text('Powered by 文案工具 Pro', W/2, 98, { align:'center' });
+
+  // Score circle
+  const d = lastSEOData;
+  const scoreColor = d.score >= 60 ? [45,90,61] : d.score >= 40 ? [139,105,20] : [192,57,43];
+  doc.setDrawColor(...scoreColor);
+  doc.setLineWidth(4);
+  doc.circle(W/2, 128, 18, 'S');
+  setFont('bold', 20, scoreColor);
+  doc.text(String(d.score), W/2, 132, { align:'center' });
+  setFont('normal', 9, [107,101,96]);
+  doc.text('整體 SEO 健康度', W/2, 140, { align:'center' });
+
+  const now = new Date().toLocaleDateString('zh-TW');
+  setFont('normal', 9, [156,150,144]);
+  doc.text(`報告產生日期：${now}`, W/2, 175, { align:'center' });
+
+  // ── Page 2: Score Breakdown ──
+  addPage();
+  y = margin;
+
+  setFont('bold', 16, [30,24,20]);
+  doc.text('各面向評分', margin, y); y += 10;
+
+  const cols = Math.min(d.breakdown.length, 4);
+  const bw = (cw - (cols-1)*6) / cols;
+  d.breakdown.forEach((s, i) => {
+    const bx = margin + i * (bw + 6);
+    const rgb = hex2rgb(s.color);
+    drawRect(bx, y, bw, 28, [rgb[0]*0.15+235, rgb[1]*0.15+235, rgb[2]*0.15+235]);
+    doc.setFont('helvetica','bold'); doc.setFontSize(18); doc.setTextColor(...rgb);
+    doc.text(String(s.score), bx + bw/2, y+13, { align:'center' });
+    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(107,101,96);
+    doc.text(s.name, bx + bw/2, y+21, { align:'center' });
+    // bar
+    doc.setFillColor(226,221,215);
+    doc.roundedRect(bx+4, y+23, bw-8, 2, 1, 1, 'F');
+    doc.setFillColor(...rgb);
+    doc.roundedRect(bx+4, y+23, (bw-8)*s.score/100, 2, 1, 1, 'F');
+  });
+  y += 38;
+
+  // ── Keyword Analysis ──
+  setFont('bold', 13, [30,24,20]);
+  doc.text('關鍵字分析', margin, y); y += 8;
+
+  const kwSections = [
+    { label:'✓ 較強關鍵字', items: d.strong_kw, bg:[232,240,234], fg:[45,90,61] },
+    { label:'△ 需加強', items: d.weak_kw, bg:[253,248,232], fg:[139,105,20] },
+    { label:'✗ 幾乎缺席', items: d.miss_kw, bg:[253,238,234], fg:[192,57,43] },
+  ];
+  kwSections.forEach(sec => {
+    checkY(14);
+    setFont('bold', 9, sec.fg);
+    doc.text(sec.label, margin, y); y += 5;
+    let tx = margin;
+    sec.items.forEach(kw => {
+      const tw = doc.getTextWidth(kw) + 8;
+      if (tx + tw > W - margin) { tx = margin; y += 7; checkY(10); }
+      drawRect(tx, y-4, tw, 6, sec.bg);
+      setFont('bold', 8, sec.fg);
+      doc.text(kw, tx+4, y); tx += tw + 4;
+    });
+    y += 12;
+  });
+
+  // ── Issues ──
+  checkY(20);
+  setFont('bold', 13, [30,24,20]);
+  doc.text('需立即強化的 SEO 問題', margin, y); y += 8;
+  d.issues.forEach((iss, i) => {
+    checkY(20);
+    drawRect(margin, y-3, 6, 14, [192,57,43]);
+    setFont('bold', 9, [30,24,20]);
+    doc.text(`0${i+1}  ${iss.title}`, margin+9, y+1);
+    setFont('normal', 8, [107,101,96]);
+    const endY = wrapText(iss.desc, margin+9, y+6, cw-12, 4.5);
+    y = endY + 5;
+  });
+
+  // ── New Keywords Table ──
+  checkY(30);
+  setFont('bold', 13, [30,24,20]);
+  doc.text('建議培養的新關鍵字', margin, y); y += 8;
+
+  // Table header
+  drawRect(margin, y-3, cw, 8, [45,90,61]);
+  setFont('bold', 8, [255,255,255]);
+  doc.text('關鍵字', margin+4, y+1);
+  doc.text('搜尋意圖', margin+45, y+1);
+  doc.text('優先度', margin+cw-20, y+1);
+  y += 10;
+
+  const priLabel = { high:'⭐⭐⭐ 高', medium:'⭐⭐ 中', low:'⭐ 低' };
+  d.new_kw.forEach((k, i) => {
+    checkY(12);
+    if (i % 2 === 0) drawRect(margin, y-3.5, cw, 8, [247,245,242]);
+    setFont('bold', 8, [30,24,20]);
+    doc.text(k.word, margin+4, y);
+    setFont('normal', 8, [107,101,96]);
+    const intentLines = doc.splitTextToSize(k.intent, cw-60);
+    doc.text(intentLines[0] + (intentLines.length>1?'…':''), margin+45, y);
+    setFont('bold', 8, [45,90,61]);
+    doc.text(priLabel[k.pri]||'⭐⭐ 中', margin+cw-20, y);
+    y += 8;
+  });
+  y += 4;
+
+  // ── Action Plan ──
+  checkY(30);
+  setFont('bold', 13, [30,24,20]);
+  doc.text('優化行動清單', margin, y); y += 8;
+
+  const phases = [
+    { label:'🔴 立即執行', items: d.actions.now, bg:[253,238,234], fg:[192,57,43] },
+    { label:'🟡 一個月內', items: d.actions.month, bg:[253,248,232], fg:[139,105,20] },
+    { label:'🟢 持續進行', items: d.actions.ongoing, bg:[232,240,234], fg:[45,90,61] },
+  ];
+  phases.forEach(ph => {
+    checkY(14);
+    drawRect(margin, y-3, cw, 7, ph.bg);
+    setFont('bold', 9, ph.fg);
+    doc.text(ph.label, margin+4, y+0.5); y += 10;
+    ph.items.forEach((a, i) => {
+      checkY(10);
+      setFont('normal', 8, [30,24,20]);
+      const endY = wrapText(`${i+1}.  ${a}`, margin+4, y, cw-8, 4.5);
+      y = endY + 3;
+    });
+    y += 4;
+  });
+
+  // ── Footer on all pages ──
+  const totalPages = doc.getNumberOfPages();
+  for (let p = 1; p <= totalPages; p++) {
+    doc.setPage(p);
+    doc.setDrawColor(226,221,215);
+    doc.setLineWidth(0.3);
+    doc.line(margin, 288, W-margin, 288);
+    setFont('normal', 8, [156,150,144]);
+    doc.text('文案工具 Pro  |  SEO 分析報告', margin, 293);
+    doc.text(`${p} / ${totalPages}`, W-margin, 293, { align:'right' });
+  }
+
+  doc.save(`SEO分析報告_${now.replace(/\//g,'-')}.pdf`);
+  if (btn) { btn.textContent = '⬇ 匯出 PDF 報告'; btn.disabled = false; }
+}
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
+    const s = document.createElement('script');
+    s.src = src; s.onload = resolve; s.onerror = reject;
+    document.head.appendChild(s);
+  });
 }
 
 function doCopy(btn, enc) {
